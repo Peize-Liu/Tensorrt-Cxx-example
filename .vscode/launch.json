@@ -1,0 +1,22 @@
+{
+"version": "0.2.0",
+"configurations": [
+  {
+    "name": "(gdb) test_tensorflow",
+    "type": "cppdbg",
+    "request": "launch", 
+    "program": "/root/workspace/tensorrt_test/build/tensorrt_test",
+    "MIMode": "gdb",
+    "cwd": "${workspaceFolder}",
+    "args": [ "/root/workspace/hitnet/models/eth3d/saved_model_240x320/model_float32_onnx.trt"  
+    ],
+    "setupCommands": [
+        {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+        }
+    ]
+
+}]
+}
