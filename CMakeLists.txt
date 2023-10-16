@@ -16,5 +16,7 @@ include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
 link_libraries(${CUDA_LIBRARIES} ${OpenCV_LIBS} nvinfer nvinfer_plugin nvonnxparser)
 add_executable(tensorrt_test tensorrt_test.cpp)
+add_executable(unified_memory_test unfied_memory_test.cpp)
+
 
 

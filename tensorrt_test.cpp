@@ -76,7 +76,6 @@ public:
     cv::vconcat(left_image_mono, right_image_mono, input_image);
     // cv::imshow("input", input_image);
     input_image.convertTo(input_image_, CV_32FC1, 1.0/255.0);//
-   
     // buffer_manager_->copyInputToDevice();
     #ifndef UM
     memcpy(buffer_manager_->getHostBuffer(kInputnames[0]), input_image_.data, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
@@ -86,7 +85,7 @@ public:
     cudaStreamAttachMemAsync(this->stream_,buffer_manager_->getHostBuffer(kInputnames[0]),0,cudaMemAttachGlobal);
     #endif
 
-    return 0; 
+    return 0;
   }
 
   int32_t doInfference(){
