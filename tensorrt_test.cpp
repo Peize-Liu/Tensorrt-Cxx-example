@@ -9,7 +9,7 @@
 #include <vector>
 #include <NvOnnxParser.h>
 #include <stdint.h>
-#include "common/buffers.h"
+#include "MemoryManager/buffers.h"
 #include <stdint.h>
 
 
@@ -37,7 +37,6 @@ public:
     if (cudaGetLastError() != cudaSuccess){
       printf("[Tensor basic] Create stream failed\n");
     }
-    
     buffer_manager_ = new samplesCommon::BufferManager(engine, 0, context_);
     //depends on your engine so should realize in child class
     this->input_dims_ = engine->getBindingDimensions(0);
@@ -76,22 +75,13 @@ public:
     cv::vconcat(left_image_mono, right_image_mono, input_image);
     // cv::imshow("input", input_image);
     input_image.convertTo(input_image_, CV_32FC1, 1.0/255.0);//
-    // buffer_manager_->copyInputToDevice();
-    #ifndef UM
     memcpy(buffer_manager_->getHostBuffer(kInputnames[0]), input_image_.data, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
     buffer_manager_->copyInputToDeviceAsync(stream_);
-    #else
-    memcpy(buffer_manager_->getHostBuffer(kInputnames[0]), input_image_.data, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
-    cudaStreamAttachMemAsync(this->stream_,buffer_manager_->getHostBuffer(kInputnames[0]),0,cudaMemAttachGlobal);
-    #endif
-
     return 0;
   }
 
   int32_t doInfference(){
-    // bool status = this->context_->enqueueV3(stream_);//not work
     bool status = this->context_->enqueueV2(buffer_manager_->getDeviceBindings().data(), stream_, nullptr);
-    // bool status = this->context_->executeV2(buffer_manager_->getDeviceBindings().data());
     if (!status){
       printf("do inference failed\n");
       return -1;
@@ -100,15 +90,9 @@ public:
   }
 
   int32_t getOutputData(){
-    #ifndef UM
     buffer_manager_->copyOutputToHostAsync(stream_);
     cudaStreamSynchronize(stream_);
-    #else
-    cudaStreamAttachMemAsync(this->stream_,buffer_manager_->getHostBuffer(kOutputnames[0]),0,cudaMemAttachHost);
-    cudaStreamSynchronize(this->stream_);
-    #endif
-
-    // buffer_manager_->copyOutputToHost();
+    buffer_manager_->copyOutputToHost();
     float* host_data = static_cast<float*>(buffer_manager_->getHostBuffer(kOutputnames[0]));
     cv::Mat output_mat(output_dims_.d[1], output_dims_.d[2], CV_32FC1, host_data);
     cv::normalize(output_mat, output_mat, 0, 255, cv::NORM_MINMAX,CV_8UC1);
@@ -214,7 +198,7 @@ int main(int argc, char** argv){
   std::string plan = engine_buffer.str();
   printf("engine size: %d\n", plan.size());
   auto nv_engine_ptr =  nv_runtime->deserializeCudaEngine(plan.data(), plan.size(), nullptr);
-  std::shared_ptr<nvinfer1::ICudaEngine> nv_engine_ptr2(nv_engine_ptr, samplesCommon::InferDeleter());
+  std::shared_ptr<nvinfer1::ICudaEngine> nv_engine_ptr2(nv_engine_ptr, InferDeleter());
   if (!nv_engine_ptr){
     printf("[Tensor basic] Engine deserrialized failed\n");
     return -3;
@@ -227,7 +211,7 @@ int main(int argc, char** argv){
     printf("read image failed\n");
     return -1;
   }
-    tensor_excutor.setInputData(l_image, r_image);
+  tensor_excutor.setInputData(l_image, r_image);
   printf("input data set\n");
   tensor_excutor.doInfference();
   tensor_excutor.getOutputData();
@@ -239,10 +223,6 @@ int main(int argc, char** argv){
   //   excutor_lists.push_back(tensor_excutor);
   // }
 
-  // for (auto && iter : excutor_lists){
-  //   iter.setInputData(l_image, r_image);
-  //   printf("input data set\n");
-  // }
 
 
   // time_t start, end;

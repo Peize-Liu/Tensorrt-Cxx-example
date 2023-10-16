@@ -47,6 +47,16 @@ public:
     if (status != cudaSuccess){
       printf("cudaMallocManaged failed\n");
     }
+    status = cudaStreamAttachMemAsync(this->stream_, this->unified_input_buffer_, 0, cudaMemAttachGlobal);
+    if (status != cudaSuccess){
+      printf("cudaStreamAttachMemAsync failed\n");
+    }
+
+    status = cudaStreamAttachMemAsync(this->stream_, this->unified_output_buffer_, 0, cudaMemAttachHost);
+    if (status != cudaSuccess){
+      printf("cudaStreamAttachMemAsync failed\n");
+    }
+
   }
   ~TensorExcutor(){
     if (this->unified_input_buffer_== nullptr){
@@ -79,11 +89,10 @@ public:
     cv::vconcat(left_image_mono, right_image_mono, input_image);
     input_image.convertTo(input_image_, CV_32FC1, 1.0/255.0);//
     memcpy(this->unified_input_buffer_, input_image_.data, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
-    cudaError_t status = cudaStreamAttachMemAsync(this->stream_, this->unified_input_buffer_, 0, cudaMemAttachGlobal);
-    if (status != cudaSuccess){
-      printf("cudaStreamAttachMemAsync failed\n");
-    }
-    
+    // cudaError_t status = cudaStreamAttachMemAsync(this->stream_, this->unified_input_buffer_, 0, cudaMemAttachGlobal);
+    // if (status != cudaSuccess){
+    //   printf("cudaStreamAttachMemAsync failed\n");
+    // }
     // buffer_manager_->copyInputToDeviceAsync(stream_);
     return 0;
   }
@@ -103,11 +112,11 @@ public:
   }
 
   int32_t getOutputData(){
-    cudaError_t status = cudaStreamAttachMemAsync(this->stream_, this->unified_output_buffer_, 0, cudaMemAttachHost);
-    if (status != cudaSuccess){
-      printf("cudaStreamAttachMemAsync failed\n");
-    }
-    printf("Debug\n");
+    // cudaError_t status = cudaStreamAttachMemAsync(this->stream_, this->unified_output_buffer_, 0, cudaMemAttachHost);
+    // if (status != cudaSuccess){
+    //   printf("cudaStreamAttachMemAsync failed\n");
+    // }
+    // printf("Debug\n");
     cudaStreamSynchronize(this->stream_);
     // buffer_manager_->copyOutputToHost();
     float* host_data = static_cast<float*>(this->unified_output_buffer_);
@@ -118,8 +127,8 @@ public:
     cv::Mat output_mat(output_dims_.d[1], output_dims_.d[2], CV_32FC1, host_data);
     cv::normalize(output_mat, output_mat, 0, 255, cv::NORM_MINMAX,CV_8UC1);
     cv::applyColorMap(output_mat, output_mat, cv::COLORMAP_JET);
-    cv::imshow("output", output_mat);
-    cv::waitKey(0);
+    // cv::imshow("output", output_mat);
+    // cv::waitKey(0);
     return 0;
   }
 
@@ -158,7 +167,8 @@ int main(int argc, char** argv){
   std::string plan = engine_buffer.str();
   printf("engine size: %d\n", plan.size());
   auto nv_engine_ptr =  nv_runtime->deserializeCudaEngine(plan.data(), plan.size(), nullptr);
-  std::shared_ptr<nvinfer1::ICudaEngine> nv_engine_ptr2(nv_engine_ptr, samplesCommon::InferDeleter());
+  // std::shared_ptr<nvinfer1::ICudaEngine> nv_engine_ptr2(nv_engine_ptr, samplesCommon::InferDeleter());
+  std::shared_ptr<nvinfer1::ICudaEngine> nv_engine_ptr2(nv_engine_ptr, InferDeleter());
   if (!nv_engine_ptr){
     printf("[Tensor basic] Engine deserrialized failed\n");
     return -3;
@@ -176,6 +186,31 @@ int main(int argc, char** argv){
   tensor_excutor.doInfference();
   printf("finish infference\n");
   tensor_excutor.getOutputData();
+
+    std::vector<TensorExcutor> excutor_lists;
+  for (int i = 0; i < 4; i++){
+    TensorExcutor tensor_excutor(nv_engine_ptr2);
+    excutor_lists.push_back(tensor_excutor);
+  }
+
+  time_t start, end;
+  start = clock();
+  for(int i = 0; i < 1000; i++){
+    for (auto && iter : excutor_lists){
+      iter.setInputData(l_image, r_image);
+      // printf("do inference\n");
+    }
+    for (auto && iter : excutor_lists){
+      iter.doInfference();
+      // printf("do inference\n");
+    }
+    for (auto && iter : excutor_lists){
+      iter.getOutputData();
+      // printf("get output\n");
+    }
+  }
+  end = clock();
+  printf("time: %f\n", (double)(end - start)/CLOCKS_PER_SEC);
   return 0;
 }
 
