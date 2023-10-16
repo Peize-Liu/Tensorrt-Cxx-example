@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include "common/buffers.h"
 #include <stdint.h>
+#define UM
+
 
 //user should realize
 const std::vector<std::string> kInputnames = {"input"};
@@ -77,7 +79,10 @@ public:
     input_image.convertTo(input_image_, CV_32FC1, 1.0/255.0);//
     memcpy(buffer_manager_->getHostBuffer(kInputnames[0]), input_image_.data, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
     // buffer_manager_->copyInputToDevice();
+    #ifndef UM
     buffer_manager_->copyInputToDeviceAsync(stream_);
+    #endif
+
     return 0; 
   }
 
@@ -92,15 +97,17 @@ public:
   }
 
   int32_t getOutputData(){
+    #ifndef UM
     buffer_manager_->copyOutputToHostAsync(stream_);
+    #endif
     cudaStreamSynchronize(stream_);
-    buffer_manager_->copyOutputToHost();
+    // buffer_manager_->copyOutputToHost();
     float* host_data = static_cast<float*>(buffer_manager_->getHostBuffer(kOutputnames[0]));
     cv::Mat output_mat(output_dims_.d[1], output_dims_.d[2], CV_32FC1, host_data);
-    // cv::normalize(output_mat, output_mat, 0, 255, cv::NORM_MINMAX,CV_8UC1);
-    // cv::applyColorMap(output_mat, output_mat, cv::COLORMAP_JET);
-    // cv::imshow("output", output_mat);
-    // cv::waitKey(0);
+    cv::normalize(output_mat, output_mat, 0, 255, cv::NORM_MINMAX,CV_8UC1);
+    cv::applyColorMap(output_mat, output_mat, cv::COLORMAP_JET);
+    cv::imshow("output", output_mat);
+    cv::waitKey(0);
     return 0;
   }
 
@@ -227,32 +234,32 @@ int main(int argc, char** argv){
   }
 
 
-  time_t start, end;
-  start = clock();
-  for(int i = 0; i < 1000; i++){
-    for (auto && iter : excutor_lists){
-      iter.setInputData(l_image, r_image);
-      // printf("do inference\n");
-    }
-    for (auto && iter : excutor_lists){
-      iter.doInfference();
-      // printf("do inference\n");
-    }
-    for (auto && iter : excutor_lists){
-      iter.getOutputData();
-      // printf("get output\n");
-    }
-  }
-  end = clock();
+  // time_t start, end;
+  // start = clock();
+  // for(int i = 0; i < 1000; i++){
+  //   for (auto && iter : excutor_lists){
+  //     iter.setInputData(l_image, r_image);
+  //     // printf("do inference\n");
+  //   }
+  //   for (auto && iter : excutor_lists){
+  //     iter.doInfference();
+  //     // printf("do inference\n");
+  //   }
+  //   for (auto && iter : excutor_lists){
+  //     iter.getOutputData();
+  //     // printf("get output\n");
+  //   }
+  // }
+  // end = clock();
 
-  printf("time: %f\n", (double)(end - start)/CLOCKS_PER_SEC);
+  // printf("time: %f\n", (double)(end - start)/CLOCKS_PER_SEC);
 
 
 
-  // tensor_excutor.setInputData(l_image, r_image);
-  // printf("input data set\n");
-  // tensor_excutor.doInfference();
-  // tensor_excutor.getOutputData();
+  tensor_excutor.setInputData(l_image, r_image);
+  printf("input data set\n");
+  tensor_excutor.doInfference();
+  tensor_excutor.getOutputData();
 #endif
   return 0;
 }

@@ -234,10 +234,13 @@ public:
 };
 
 
-
+#ifndef UM
 using DeviceBuffer = GenericBuffer<DeviceAllocator, DeviceFree>;
 using HostBuffer = GenericBuffer<HostAllocator, HostFree>;
-
+#else
+using DeviceBuffer = GenericBuffer<UnifiedAllocator, DeviceFree>;
+using HostBuffer = GenericBuffer<UnifiedAllocator, HostFree>;
+#endif
 //!
 //! \brief  The ManagedBuffer class groups together a pair of corresponding device and host buffers.
 //!
