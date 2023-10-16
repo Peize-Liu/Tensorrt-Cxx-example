@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include "common/buffers.h"
 #include <stdint.h>
-#define UM
+// #define UM
 
 
 //user should realize
@@ -106,8 +106,8 @@ public:
     cv::Mat output_mat(output_dims_.d[1], output_dims_.d[2], CV_32FC1, host_data);
     cv::normalize(output_mat, output_mat, 0, 255, cv::NORM_MINMAX,CV_8UC1);
     cv::applyColorMap(output_mat, output_mat, cv::COLORMAP_JET);
-    cv::imshow("output", output_mat);
-    cv::waitKey(0);
+    // cv::imshow("output", output_mat);
+    // cv::waitKey(0);
     return 0;
   }
 
@@ -214,8 +214,8 @@ int main(int argc, char** argv){
   }
   TensorExcutor tensor_excutor(nv_engine_ptr2);
   printf("engine init\n");
-  cv::Mat l_image = cv::imread("/root/workspace/tensorrt_test/left.png");
-  cv::Mat r_image = cv::imread("/root/workspace/tensorrt_test/right.png");
+  cv::Mat l_image = cv::imread("/root/workspace/left.png");
+  cv::Mat r_image = cv::imread("/root/workspace/right.png");
   if  (l_image.empty() || r_image.empty()){
     printf("read image failed\n");
     return -1;
@@ -234,25 +234,25 @@ int main(int argc, char** argv){
   }
 
 
-  // time_t start, end;
-  // start = clock();
-  // for(int i = 0; i < 1000; i++){
-  //   for (auto && iter : excutor_lists){
-  //     iter.setInputData(l_image, r_image);
-  //     // printf("do inference\n");
-  //   }
-  //   for (auto && iter : excutor_lists){
-  //     iter.doInfference();
-  //     // printf("do inference\n");
-  //   }
-  //   for (auto && iter : excutor_lists){
-  //     iter.getOutputData();
-  //     // printf("get output\n");
-  //   }
-  // }
-  // end = clock();
+  time_t start, end;
+  start = clock();
+  for(int i = 0; i < 1000; i++){
+    for (auto && iter : excutor_lists){
+      iter.setInputData(l_image, r_image);
+      // printf("do inference\n");
+    }
+    for (auto && iter : excutor_lists){
+      iter.doInfference();
+      // printf("do inference\n");
+    }
+    for (auto && iter : excutor_lists){
+      iter.getOutputData();
+      // printf("get output\n");
+    }
+  }
+  end = clock();
 
-  // printf("time: %f\n", (double)(end - start)/CLOCKS_PER_SEC);
+  printf("time: %f\n", (double)(end - start)/CLOCKS_PER_SEC);
 
 
 

@@ -179,12 +179,12 @@ public:
     static void help(std::ostream& out);
 };
 
-constexpr nvinfer1::TempfileControlFlags getTempfileControlDefaults()
-{
-    using F = nvinfer1::TempfileControlFlag;
-    return (1U << static_cast<uint32_t>(F::kALLOW_TEMPORARY_FILES))
-        | (1U << static_cast<uint32_t>(F::kALLOW_IN_MEMORY_FILES));
-}
+// constexpr nvinfer1::TempfileControlFlags getTempfileControlDefaults()
+// {
+//     using F = nvinfer1::TempfileControlFlag;
+//     return (1U << static_cast<uint32_t>(F::kALLOW_TEMPORARY_FILES))
+//         | (1U << static_cast<uint32_t>(F::kALLOW_IN_MEMORY_FILES));
+// }
 
 class BuildOptions : public Options
 {
@@ -235,9 +235,9 @@ public:
     // C++11 does not automatically generate hash function for enum class.
     // Use int32_t to support C++11 compilers.
     std::unordered_map<int32_t, bool> previewFeatures;
-    nvinfer1::HardwareCompatibilityLevel hardwareCompatibilityLevel{nvinfer1::HardwareCompatibilityLevel::kNONE};
+    // nvinfer1::HardwareCompatibilityLevel hardwareCompatibilityLevel{nvinfer1::HardwareCompatibilityLevel::kNONE};
     std::string tempdir{};
-    nvinfer1::TempfileControlFlags tempfileControls{getTempfileControlDefaults()};
+    // nvinfer1::TempfileControlFlags tempfileControls{getTempfileControlDefaults()};
     RuntimeMode useRuntime{RuntimeMode::kFULL};
     std::string leanDLLPath{};
     int32_t maxAuxStreams{defaultMaxAuxStreams};

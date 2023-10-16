@@ -3,7 +3,7 @@
 # Usage: ./start_docker.sh  1 to start docker only for image transportation.
 # Please do not move this file to other dir, it will cause the docker container can not find the current dir.
 
-DOCKERIMAGE="tensorrt_docker:latest"
+DOCKERIMAGE="d2slam:jetson_orin_base_35.3.1"
 xhost +
 echo "[INFO] Start docker container with mapping current dir to docker container"
 CURRENT_DIR=$(pwd)

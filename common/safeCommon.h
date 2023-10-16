@@ -82,7 +82,7 @@ inline uint32_t elementSize(nvinfer1::DataType t)
     case nvinfer1::DataType::kINT8: return 1;
     case nvinfer1::DataType::kUINT8: return 1;
     case nvinfer1::DataType::kBOOL: return 1;
-    case nvinfer1::DataType::kFP8: return 1;
+    // case nvinfer1::DataType::kFP8: return 1;
     }
     return 0;
 }

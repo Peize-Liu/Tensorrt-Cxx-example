@@ -16,6 +16,7 @@
  */
 #ifndef TENSORRT_BUFFERS_H
 #define TENSORRT_BUFFERS_H
+// #define UM
 
 #include "NvInfer.h"
 #include "common.h"
