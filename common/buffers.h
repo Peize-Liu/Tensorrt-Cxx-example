@@ -16,7 +16,6 @@
  */
 #ifndef TENSORRT_BUFFERS_H
 #define TENSORRT_BUFFERS_H
-// #define UM
 
 #include "NvInfer.h"
 #include "common.h"
@@ -215,14 +214,35 @@ public:
 };
 
 //TODO: unify memory for jetson
-class UnifiedAllocator
+// class UnifiedAllocator
+// {
+// public:
+//     bool operator()(void** ptr, size_t size) const
+//     {
+//         return cudaMallocManaged(ptr, size) == cudaSuccess;
+//     }
+// };
+
+class UnifiedAllocatorHost
 {
 public:
     bool operator()(void** ptr, size_t size) const
     {
+        printf("[Debug] host use UM\n");
+        return cudaMallocManaged(ptr, size,cudaMemAttachHost) == cudaSuccess;
+    }
+};
+
+class UnifiedAllocatorDevice
+{
+public:
+    bool operator()(void** ptr, size_t size) const
+    {
+        printf("[Debug] device UM\n");
         return cudaMallocManaged(ptr, size) == cudaSuccess;
     }
 };
+
 
 class UnifiedFree
 {
@@ -239,8 +259,8 @@ public:
 using DeviceBuffer = GenericBuffer<DeviceAllocator, DeviceFree>;
 using HostBuffer = GenericBuffer<HostAllocator, HostFree>;
 #else
-using DeviceBuffer = GenericBuffer<UnifiedAllocator, DeviceFree>;
-using HostBuffer = GenericBuffer<UnifiedAllocator, HostFree>;
+using DeviceBuffer = GenericBuffer<UnifiedAllocatorDevice, DeviceFree>;
+using HostBuffer = GenericBuffer<UnifiedAllocatorHost, HostFree>;
 #endif
 //!
 //! \brief  The ManagedBuffer class groups together a pair of corresponding device and host buffers.

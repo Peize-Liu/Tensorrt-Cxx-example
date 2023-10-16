@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include "common/buffers.h"
 #include <stdint.h>
-// #define UM
 
 
 //user should realize
@@ -39,15 +38,15 @@ public:
       printf("[Tensor basic] Create stream failed\n");
     }
     
-    buffer_manager_ = new samplesCommon::BufferManager(engine, 1, context_);
+    buffer_manager_ = new samplesCommon::BufferManager(engine, 0, context_);
     //depends on your engine so should realize in child class
     this->input_dims_ = engine->getBindingDimensions(0);
     this->output_dims_ = engine->getBindingDimensions(1);
     printf("Engine input data type:%d\n", engine->getBindingDataType(0));
     printf("Engine output data type:%d\n", engine->getBindingDataType(1)); //float32_t
-    memset(buffer_manager_->getHostBuffer(kOutputnames[0]), 0, output_dims_.d[1] * output_dims_.d[2] * output_dims_.d[3] * sizeof(float));
+    // memset(buffer_manager_->getHostBuffer(kOutputnames[0]), 0, output_dims_.d[1] * output_dims_.d[2] * output_dims_.d[3] * sizeof(float));
     //memset intput buffer
-    memset(buffer_manager_->getHostBuffer(kInputnames[0]), 0, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
+    // memset(buffer_manager_->getHostBuffer(kInputnames[0]), 0, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
 
   }
   ~TensorExcutor(){
@@ -77,16 +76,21 @@ public:
     cv::vconcat(left_image_mono, right_image_mono, input_image);
     // cv::imshow("input", input_image);
     input_image.convertTo(input_image_, CV_32FC1, 1.0/255.0);//
-    memcpy(buffer_manager_->getHostBuffer(kInputnames[0]), input_image_.data, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
+   
     // buffer_manager_->copyInputToDevice();
     #ifndef UM
+    memcpy(buffer_manager_->getHostBuffer(kInputnames[0]), input_image_.data, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
     buffer_manager_->copyInputToDeviceAsync(stream_);
+    #else
+    memcpy(buffer_manager_->getHostBuffer(kInputnames[0]), input_image_.data, input_dims_.d[1] * input_dims_.d[2] * input_dims_.d[3] * sizeof(float));
+    cudaStreamAttachMemAsync(this->stream_,buffer_manager_->getHostBuffer(kInputnames[0]),0,cudaMemAttachGlobal);
     #endif
 
     return 0; 
   }
 
   int32_t doInfference(){
+    // bool status = this->context_->enqueueV3(stream_);//not work
     bool status = this->context_->enqueueV2(buffer_manager_->getDeviceBindings().data(), stream_, nullptr);
     // bool status = this->context_->executeV2(buffer_manager_->getDeviceBindings().data());
     if (!status){
@@ -99,15 +103,19 @@ public:
   int32_t getOutputData(){
     #ifndef UM
     buffer_manager_->copyOutputToHostAsync(stream_);
-    #endif
     cudaStreamSynchronize(stream_);
+    #else
+    cudaStreamAttachMemAsync(this->stream_,buffer_manager_->getHostBuffer(kOutputnames[0]),0,cudaMemAttachHost);
+    cudaStreamSynchronize(this->stream_);
+    #endif
+
     // buffer_manager_->copyOutputToHost();
     float* host_data = static_cast<float*>(buffer_manager_->getHostBuffer(kOutputnames[0]));
     cv::Mat output_mat(output_dims_.d[1], output_dims_.d[2], CV_32FC1, host_data);
     cv::normalize(output_mat, output_mat, 0, 255, cv::NORM_MINMAX,CV_8UC1);
     cv::applyColorMap(output_mat, output_mat, cv::COLORMAP_JET);
-    // cv::imshow("output", output_mat);
-    // cv::waitKey(0);
+    cv::imshow("output", output_mat);
+    cv::waitKey(0);
     return 0;
   }
 
@@ -214,52 +222,50 @@ int main(int argc, char** argv){
   }
   TensorExcutor tensor_excutor(nv_engine_ptr2);
   printf("engine init\n");
-  cv::Mat l_image = cv::imread("/root/workspace/left.png");
-  cv::Mat r_image = cv::imread("/root/workspace/right.png");
+  cv::Mat l_image = cv::imread("/home/dji/workspace/Tensorrt-Cxx-example/left.png");
+  cv::Mat r_image = cv::imread("/home/dji/workspace/Tensorrt-Cxx-example/right.png");
   if  (l_image.empty() || r_image.empty()){
     printf("read image failed\n");
     return -1;
   }
-
-
-  std::vector<TensorExcutor> excutor_lists;
-  for (int i = 0; i < 4; i++){
-    TensorExcutor tensor_excutor(nv_engine_ptr2);
-    excutor_lists.push_back(tensor_excutor);
-  }
-
-  for (auto && iter : excutor_lists){
-    iter.setInputData(l_image, r_image);
-    printf("input data set\n");
-  }
-
-
-  time_t start, end;
-  start = clock();
-  for(int i = 0; i < 1000; i++){
-    for (auto && iter : excutor_lists){
-      iter.setInputData(l_image, r_image);
-      // printf("do inference\n");
-    }
-    for (auto && iter : excutor_lists){
-      iter.doInfference();
-      // printf("do inference\n");
-    }
-    for (auto && iter : excutor_lists){
-      iter.getOutputData();
-      // printf("get output\n");
-    }
-  }
-  end = clock();
-
-  printf("time: %f\n", (double)(end - start)/CLOCKS_PER_SEC);
-
-
-
-  tensor_excutor.setInputData(l_image, r_image);
+    tensor_excutor.setInputData(l_image, r_image);
   printf("input data set\n");
   tensor_excutor.doInfference();
   tensor_excutor.getOutputData();
+
+
+  // std::vector<TensorExcutor> excutor_lists;
+  // for (int i = 0; i < 4; i++){
+  //   TensorExcutor tensor_excutor(nv_engine_ptr2);
+  //   excutor_lists.push_back(tensor_excutor);
+  // }
+
+  // for (auto && iter : excutor_lists){
+  //   iter.setInputData(l_image, r_image);
+  //   printf("input data set\n");
+  // }
+
+
+  // time_t start, end;
+  // start = clock();
+  // for(int i = 0; i < 1000; i++){
+  //   for (auto && iter : excutor_lists){
+  //     iter.setInputData(l_image, r_image);
+  //     // printf("do inference\n");
+  //   }
+  //   for (auto && iter : excutor_lists){
+  //     iter.doInfference();
+  //     // printf("do inference\n");
+  //   }
+  //   for (auto && iter : excutor_lists){
+  //     iter.getOutputData();
+  //     // printf("get output\n");
+  //   }
+  // }
+  // end = clock();
+  // printf("time: %f\n", (double)(end - start)/CLOCKS_PER_SEC);
+
+
 #endif
   return 0;
 }
